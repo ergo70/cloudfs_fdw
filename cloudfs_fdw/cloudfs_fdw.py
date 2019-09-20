@@ -19,7 +19,7 @@ class cloudfs_fdw(ForeignDataWrapper):
         - aws_access_key : AWS access keys (S3 only)
         - aws_secret_key : AWS secret keys (S3 only)
         - bucket : bucket (S3 only)
-        - filename : full path to the csv file, which must be readable
+        - filepath : full path to the csv file, which must be readable
         - delimiter : the delimiter used between fields (CSV only)
           Default : ","
         - quote_char : quote character (CSV only)
@@ -52,7 +52,7 @@ class cloudfs_fdw(ForeignDataWrapper):
 
         self.http_url = fdw_options.get("url")
 
-        self.filename = fdw_options.get("filename")
+        self.filepath = fdw_options.get("filepath")
         #if self.filename is None:
         #    log_to_postgres("Please set the filename", ERROR)
 
@@ -84,9 +84,9 @@ class cloudfs_fdw(ForeignDataWrapper):
     def execute(self, quals, columns):
         if 's3' == self.source:
             url = 's3://{}:{}@{}:{}@{}/{}'.format(
-                self.aws_access_key, self.aws_secret_key, self.host, self.port, self.bucket, self.filename)
+                self.aws_access_key, self.aws_secret_key, self.host, self.port, self.bucket, self.filepath)
         elif 'file' == self.source:
-            url = 'file://{}'.format(self.filename)
+            url = 'file://{}'.format(self.filepath)
         elif 'http/https' == self.source:
             url = self.http_url    
         else:
