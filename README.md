@@ -22,7 +22,7 @@ See [this](https://www.postgresql.org/docs/11/ddl-foreign-data.html) for general
 
 * source 's3'
 * bucket &lt;bucket&gt;
-* filepath &lt;filename&gt;'
+* filepath &lt;filename&gt;
 * host &lt;host&gt;, default: localhost
 * port &lt;port&gt;, default: 443
 * region &lt;region&gt;
