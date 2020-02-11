@@ -1,6 +1,7 @@
 import csv
 import smart_open
 import ijson
+import pandas
 from multicorn import ForeignDataWrapper
 from multicorn.utils import log_to_postgres, ERROR, WARNING, DEBUG
 
@@ -11,7 +12,7 @@ class cloudfs_fdw(ForeignDataWrapper):
     Valid options:
         - source : the data source (S3, HTTP/S, file, FTP, SCP, HDFS)
           Default: "S3"
-        - format : the file format (CSV, JSON, plain or compressed)
+        - format : the file format (CSV, JSON, EXCEL (xls, xlsx, xlsm, xlsb, odf), plain or compressed)
           Default : CSV
         - host : hostname
         - port : port
@@ -26,6 +27,8 @@ class cloudfs_fdw(ForeignDataWrapper):
           Default : """""""
         - header :  skip header line (CSV only)
           Default : false
+        - sheet : EXCEL sheet (EXCEL only)
+          Default : 1st sheet
     """
 
     def __init__(self, fdw_options, fdw_columns):
@@ -53,7 +56,7 @@ class cloudfs_fdw(ForeignDataWrapper):
         self.http_url = fdw_options.get("url")
 
         self.filepath = fdw_options.get("filepath")
-        #if self.filename is None:
+        # if self.filename is None:
         #    log_to_postgres("Please set the filename", ERROR)
 
         self.bucket = fdw_options.get('bucket')
@@ -77,7 +80,9 @@ class cloudfs_fdw(ForeignDataWrapper):
 
         self.json_path = fdw_options.get('json_path', 'item')
         if 'item' != self.json_path:
-            self.json_path = self.json_path + '.item'     
+            self.json_path = self.json_path + '.item'
+
+        self.sheet = fdw_options.get('sheet', 0)
 
         self.columns = fdw_columns
 
@@ -88,7 +93,7 @@ class cloudfs_fdw(ForeignDataWrapper):
         elif 'file' == self.source:
             url = 'file://{}'.format(self.filepath)
         elif 'http/https' == self.source:
-            url = self.http_url    
+            url = self.http_url
         else:
             log_to_postgres("Source {} not supported".format(self.source))
 
@@ -100,6 +105,10 @@ class cloudfs_fdw(ForeignDataWrapper):
 
         elif 'json' == self.format:
             for row in self.render_json(data_stream):
+                yield row
+
+        elif 'excel' == self.format:
+            for row in self.render_excel(data_stream):
                 yield row
 
         else:
@@ -121,3 +130,9 @@ class cloudfs_fdw(ForeignDataWrapper):
 
         for obj in object_stream:
             yield obj.values()[:len(self.columns)]
+
+    def render_excel(self, data_stream):
+        object_stream = pandas.read_excel(data_stream, sheetname=self.sheet)
+
+        for row in object_stream.iterrows():
+            yield row[1].values[:len(self.columns)]
