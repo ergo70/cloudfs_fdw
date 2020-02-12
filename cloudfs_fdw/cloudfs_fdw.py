@@ -86,7 +86,15 @@ class cloudfs_fdw(ForeignDataWrapper):
 
         self.columns = fdw_columns
 
-    def execute(self, quals, columns):
+    def can_sort(self, sortkeys):
+        can_sort = []
+
+        if self.format in ['xls', 'xlsx', 'odf']:
+            return sortkeys
+    
+        return can_sort
+
+    def execute(self, quals, columns, sortkeys=None):
         if 's3' == self.source:
             url = 's3://{}:{}@{}:{}@{}/{}'.format(
                 self.aws_access_key, self.aws_secret_key, self.host, self.port, self.bucket, self.filepath)
@@ -108,7 +116,7 @@ class cloudfs_fdw(ForeignDataWrapper):
                 yield row
 
         elif self.format in ['xls', 'xlsx', 'odf']:
-            for row in self._render_excel_or_odf(data_stream):
+            for row in self._render_excel_or_odf(data_stream, sortkeys):
                 yield row
 
         else:
@@ -131,7 +139,7 @@ class cloudfs_fdw(ForeignDataWrapper):
         for obj in object_stream:
             yield obj.values()[:len(self.columns)]
 
-    def _render_excel_or_odf(self, data_stream):
+    def _render_excel_or_odf(self, data_stream, sortkeys):
         engine = 'xlrd'
 
         if self.format == 'odf':
@@ -139,6 +147,17 @@ class cloudfs_fdw(ForeignDataWrapper):
 
         object_stream = pandas.read_excel(
             data_stream, sheet_name=self.sheet, header=0 if self.skip_header else None, engine=engine)
+
+        if sortkeys:
+            columns = object_stream.columns.values
+            sort_columns = []
+            sort_orders = []
+
+            for sortkey in sortkeys:
+                sort_columns.append(columns[sortkey.attnum - 1])
+                sort_orders.append(not sortkey.is_reversed)
+
+            object_stream.sort_values(by=sort_columns, axis=0, ascending=sort_orders, inplace=True)    
 
         for row in object_stream.iterrows():
             yield row[1].values[:len(self.columns)]
