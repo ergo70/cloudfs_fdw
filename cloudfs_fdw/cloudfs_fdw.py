@@ -97,7 +97,7 @@ class cloudfs_fdw(ForeignDataWrapper):
         else:
             log_to_postgres("Source {} not supported".format(self.source))
 
-        data_stream = smart_open.open(url)
+        data_stream = smart_open.open(url, 'rb')
 
         if 'csv' == self.format:
             for row in self._render_csv(data_stream):
@@ -132,15 +132,13 @@ class cloudfs_fdw(ForeignDataWrapper):
             yield obj.values()[:len(self.columns)]
 
     def _render_excel_or_odf(self, data_stream):
-        engine = 'openpyxl'
+        engine = 'xlrd'
 
         if self.format == 'odf':
             engine = 'odf'
-        elif self.format == 'xlsx':
-            engine = 'xlrd'
 
         object_stream = pandas.read_excel(
-            data_stream, sheetname=self.sheet, header=0 if self.skip_header else None, engine=engine)
+            data_stream, sheet_name=self.sheet, header=0 if self.skip_header else None, engine=engine)
 
         for row in object_stream.iterrows():
             yield row[1].values[:len(self.columns)]
