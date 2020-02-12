@@ -1,6 +1,6 @@
 # cloudfs_fdw
 
-A foreign data wrapper for accessing CSV, JSON and EXCEL files on cloud filesystems.
+A foreign data wrapper for accessing CSV, JSON, EXCEL and ODF files on cloud filesystems.
 
 ## Installation
 
@@ -54,6 +54,13 @@ See [this](https://www.postgresql.org/docs/11/ddl-foreign-data.html) for general
 #### EXCEL
 
  * format 'excel'
+ * header &lt;true/false&gt;
+ * sheet &lt;sheet_name&gt;, default: first sheet
+
+#### ODF
+
+ * format 'odf'
+ * header &lt;true/false&gt;
  * sheet &lt;sheet_name&gt;, default: first sheet
 
 #### Compression

@@ -7,12 +7,12 @@ from multicorn.utils import log_to_postgres, ERROR, WARNING, DEBUG
 
 
 class cloudfs_fdw(ForeignDataWrapper):
-    """A foreign data wrapper for accessing csv and JSON files on cloud filesystems.
+    """A foreign data wrapper for accessing CSV, JSON, EXCEL and ODF files on cloud filesystems.
 
     Valid options:
         - source : the data source (S3, HTTP/S, file, FTP, SCP, HDFS)
           Default: "S3"
-        - format : the file format (CSV, JSON, EXCEL (xls, xlsx, xlsm, xlsb, odf), plain or compressed)
+        - format : the file format (CSV, JSON, EXCEL, ODF, plain or compressed)
           Default : CSV
         - host : hostname
         - port : port
@@ -27,7 +27,7 @@ class cloudfs_fdw(ForeignDataWrapper):
           Default : """""""
         - header :  skip header line (CSV only)
           Default : false
-        - sheet : EXCEL sheet (EXCEL only)
+        - sheet : EXCEL sheet (EXCEL / ODF only)
           Default : 1st sheet
     """
 
@@ -100,21 +100,21 @@ class cloudfs_fdw(ForeignDataWrapper):
         data_stream = smart_open.open(url)
 
         if 'csv' == self.format:
-            for row in self.render_csv(data_stream):
+            for row in self._render_csv(data_stream):
                 yield row
 
         elif 'json' == self.format:
-            for row in self.render_json(data_stream):
+            for row in self._render_json(data_stream):
                 yield row
 
-        elif 'excel' == self.format:
-            for row in self.render_excel(data_stream):
+        elif self.format in ['xls', 'xlsx', 'odf']:
+            for row in self._render_excel_or_odf(data_stream):
                 yield row
 
         else:
             log_to_postgres("Format {} not supported".format(self.format))
 
-    def render_csv(self, data_stream):
+    def _render_csv(self, data_stream):
         object_stream = csv.reader(data_stream, delimiter=self.delimiter,
                                    quotechar=self.quotechar)
 
@@ -125,14 +125,22 @@ class cloudfs_fdw(ForeignDataWrapper):
         for obj in object_stream:
             yield obj[:len(self.columns)]
 
-    def render_json(self, data_stream):
+    def _render_json(self, data_stream):
         object_stream = ijson.items(data_stream, self.json_path)
 
         for obj in object_stream:
             yield obj.values()[:len(self.columns)]
 
-    def render_excel(self, data_stream):
-        object_stream = pandas.read_excel(data_stream, sheetname=self.sheet)
+    def _render_excel_or_odf(self, data_stream):
+        engine = 'openpyxl'
+
+        if self.format == 'odf':
+            engine = 'odf'
+        elif self.format == 'xlsx':
+            engine = 'xlrd'
+
+        object_stream = pandas.read_excel(
+            data_stream, sheetname=self.sheet, header=0 if self.skip_header else None, engine=engine)
 
         for row in object_stream.iterrows():
             yield row[1].values[:len(self.columns)]

@@ -15,5 +15,5 @@ setup(
     url='https://github.com/ergo70/cloudfs_fdw',
     license='LICENSE.txt',
     description='A foreign data wrapper for accessing csv and JSON files on cloud filesystems.',
-    install_requires=["smart_open","ijson","multicorn", "pandas", "xlrd"],
+    install_requires=["smart_open","ijson","multicorn", "pandas", "xlrd", "odfpy"],
 )
