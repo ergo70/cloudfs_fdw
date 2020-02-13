@@ -148,26 +148,24 @@ class cloudfs_fdw(ForeignDataWrapper):
         object_stream = pandas.read_excel(
             data_stream, sheet_name=self.sheet, header=0 if self.skip_header else None, engine=engine)
 
-        object_stream.columns = [column.replace(
-            " ", "_") for column in object_stream.columns]
-        object_stream.columns = [column.replace(
-            ":", "_") for column in object_stream.columns]
-
         if quals or sortkeys:
+            object_stream.columns = [column.replace(
+                " ", "_").replace(":", "_") for column in object_stream.columns]
             df_columns = object_stream.columns.values
 
         if quals:
             query = ''
-            column_names = [*self.columns.keys()]
+            column_names = list(self.columns.keys())
 
             for qual in quals:
+                column_type = self.columns[qual.field_name].base_type_name
                 column_index = column_names.index(qual.field_name)
                 query += df_columns[column_index] + ('==' if qual.operator == '=' else qual.operator) + (
-                    ('"' + str(qual.value) + '"') if type(qual.value is str) else str(qual.value)) + ' and '
+                    ('"' + str(qual.value) + '"') if column_type in ['text', 'varchar', 'character varying', 'char', 'character'] else str(qual.value)) + ' and '
 
             object_stream.query(expr=query[:-5], inplace=True)
 
-        if sortkeys:
+        if sortkeys and len(object_stream.index) > 1:
             sort_columns = []
             sort_orders = []
 
