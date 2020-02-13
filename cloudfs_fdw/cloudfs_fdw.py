@@ -91,7 +91,7 @@ class cloudfs_fdw(ForeignDataWrapper):
 
         if self.format in ['xls', 'xlsx', 'odf']:
             return sortkeys
-    
+
         return can_sort
 
     def execute(self, quals, columns, sortkeys=None):
@@ -116,7 +116,7 @@ class cloudfs_fdw(ForeignDataWrapper):
                 yield row
 
         elif self.format in ['xls', 'xlsx', 'odf']:
-            for row in self._render_excel_or_odf(data_stream, sortkeys):
+            for row in self._render_excel_or_odf(data_stream, quals, sortkeys):
                 yield row
 
         else:
@@ -139,7 +139,7 @@ class cloudfs_fdw(ForeignDataWrapper):
         for obj in object_stream:
             yield obj.values()[:len(self.columns)]
 
-    def _render_excel_or_odf(self, data_stream, sortkeys):
+    def _render_excel_or_odf(self, data_stream, quals, sortkeys):
         engine = 'xlrd'
 
         if self.format == 'odf':
@@ -148,16 +148,35 @@ class cloudfs_fdw(ForeignDataWrapper):
         object_stream = pandas.read_excel(
             data_stream, sheet_name=self.sheet, header=0 if self.skip_header else None, engine=engine)
 
+        object_stream.columns = [column.replace(
+            " ", "_") for column in object_stream.columns]
+        object_stream.columns = [column.replace(
+            ":", "_") for column in object_stream.columns]
+
+        if quals or sortkeys:
+            df_columns = object_stream.columns.values
+
+        if quals:
+            query = ''
+            column_names = [*self.columns.keys()]
+
+            for qual in quals:
+                column_index = column_names.index(qual.field_name)
+                query += df_columns[column_index] + ('==' if qual.operator == '=' else qual.operator) + (
+                    ('"' + str(qual.value) + '"') if type(qual.value is str) else str(qual.value)) + ' and '
+
+            object_stream.query(expr=query[:-5], inplace=True)
+
         if sortkeys:
-            columns = object_stream.columns.values
             sort_columns = []
             sort_orders = []
 
             for sortkey in sortkeys:
-                sort_columns.append(columns[sortkey.attnum - 1])
+                sort_columns.append(df_columns[sortkey.attnum - 1])
                 sort_orders.append(not sortkey.is_reversed)
 
-            object_stream.sort_values(by=sort_columns, axis=0, ascending=sort_orders, inplace=True)    
+            object_stream.sort_values(
+                by=sort_columns, axis=0, ascending=sort_orders, inplace=True)
 
         for row in object_stream.iterrows():
             yield row[1].values[:len(self.columns)]
