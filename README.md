@@ -37,7 +37,7 @@ See [this](https://www.postgresql.org/docs/11/ddl-foreign-data.html) for general
 #### Filesystem
 
 * source 'file'
-* filepath &lt;filepath&gt;&gt;
+* filepath &lt;filepath&gt;
 
 #### JSON
 
@@ -51,13 +51,13 @@ See [this](https://www.postgresql.org/docs/11/ddl-foreign-data.html) for general
 * delimiter &lt;delimiter&gt;, default: ,
 * quote_char &lt;quote_char&gt;, default: "
 
-#### EXCEL
+#### EXCEL (.xls, .xlsx)
 
  * format 'excel'
  * header &lt;true/false&gt;
  * sheet &lt;sheet_name&gt;, default: first sheet
 
-#### ODF
+#### ODF (.ods)
 
  * format 'odf'
  * header &lt;true/false&gt;
