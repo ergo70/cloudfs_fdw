@@ -160,10 +160,12 @@ class cloudfs_fdw(ForeignDataWrapper):
             for qual in quals:
                 column_type = self.columns[qual.field_name].base_type_name
                 column_index = column_names.index(qual.field_name)
-                query += df_columns[column_index] + ('==' if qual.operator == '=' else qual.operator) + (
-                    ('"' + str(qual.value) + '"') if column_type in ['text', 'varchar', 'character varying', 'char', 'character'] else str(qual.value)) + ' and '
+                if qual.operator in ['<', '<=', '=', '>', '>=']:
+                    query += df_columns[column_index] + ('==' if qual.operator == '=' else qual.operator) + (
+                        ('"' + str(qual.value) + '"') if column_type in ['text', 'varchar', 'character varying', 'char', 'character'] else str(qual.value)) + ' and '
 
-            object_stream.query(expr=query[:-5], inplace=True)
+            if query:
+                object_stream.query(expr=query[:-5], inplace=True)
 
         if sortkeys and len(object_stream.index) > 1:
             sort_columns = []
